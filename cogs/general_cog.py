@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from cogs.utils.utils import try_delete
 
-d_n_d_server = "https://www.owlbear.rodeo/game/42tgAU7Oz"
+d_n_d_server = "https://www.owlbear.rodeo/game/XzmZBfoKW"
 
 class Misc(commands.Cog):
     def __init__(self, bot: commands.Bot):
