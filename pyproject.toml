@@ -1,0 +1,104 @@
+[project]
+name = "GimliBot"
+version = "0.1.0"
+description = "A simple discord bot for playing music and anything else I can think of."
+readme = "README.md"
+requires-python = ">=3.13"
+
+dependencies = [
+    # Always grab the latest version
+    "yt-dlp>=2024.12.06",
+    "discord.py>=2.4.0",
+    "pydantic>=2.10.3",
+    "audioop-lts>=0.2.1",
+    "async_timeout>=5.0.1"
+]
+
+[project.optional-dependencies]
+linting = ["ruff>=0.6,<1.0"]
+testing = ["pytest>=8.3,<9.0", "pytest-asyncio>=0.24.0"]
+dev = ["ipykernel>=6.26,<7.0"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+# General settings
+line-length = 90
+cache-dir = "~/.cache/ruff"
+target-version = "py312"
+fix = false
+respect-gitignore = true
+
+# Exclude specific directories from being linted
+exclude = [
+    ".svn",
+    "CVS",
+    ".bzr",
+    ".hg",
+    ".git",
+    "__pycache__",
+    ".tox",
+    "venv/",
+    "env/",
+    ".github/",
+    "githooks/",
+]
+
+# Rules to ignore when linting
+lint.ignore = [
+    "E731", # Do not assign a `lambda` expression, use a `def`
+    "W191", # Indentation contains tabs
+    "E111", # Indentation is not a multiple of four
+    "E114", # Indentation is not a multiple of four (comment)
+    "E117", # Over-indented
+    "D206", # Docstring should be indented with spaces, not tabs
+    "D300", # Use """triple double quotes""" (found '''-quotes)
+    # Q00x - Prefer either single or double quotes, but be consistent
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812", # Missing trailing comma
+    "COM819", # Trailing comma is missing
+    "ISC001", # isort found unsorted imports
+    "ISC002", # isort found ungrouped imports
+    "E266", # Too many leading '#' for block comment - ####
+]
+# Rules to include in the linting selection
+lint.select = [
+    # pycodestyle (default)
+    "E",
+    # Pyflakes (default)
+    "F",
+    # Whitespace warnings
+    "W",
+    # isort (sort imports)
+    "I001",
+    # flake8-print
+    "T20"
+]
+lint.fixable = ["ALL"]
+lint.unfixable = []
+
+# isort settings
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+# flake8-errmsg settings
+[tool.ruff.lint.flake8-errmsg]
+max-string-length = 50
+
+# Formatting rules (inspired by Black)
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# Docstring code formatting
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+# Exclude formatting for jupyter notebooks
+exclude = ["*.ipynb"]
