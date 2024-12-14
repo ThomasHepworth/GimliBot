@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.cogs.music_bot.music_cog import VoiceState
+from src.cogs.music_cog import VoiceState
 
 
 @pytest.fixture
