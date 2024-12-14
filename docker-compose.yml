@@ -1,0 +1,10 @@
+version: "3.13"
+
+services:
+  gimlibot:
+    container_name: GimliBot
+    build: .
+    environment:
+      - TOKEN=${TOKEN}
+      - LOG_LEVEL="DEBUG"
+    restart: unless-stopped
