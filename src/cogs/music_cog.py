@@ -8,9 +8,10 @@ from discord.ext import commands
 
 from src._exceptions import VoiceError, YTDLError
 from src.cogs.music_bot.parse_youtube_input.extract_from_youtube import YtdlSource
+from src.cogs.music_bot.parse_youtube_input.parsers import parse_duration
 from src.cogs.music_bot.voice_state import VoiceState
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MusicCog(commands.Cog):
@@ -121,7 +122,7 @@ class MusicCog(commands.Cog):
             ctx.voice_state.voice.pause()
             await ctx.message.add_reaction("⏯")
 
-    @commands.command(name="resume")  # not currently working
+    @commands.command(name="resume")
     @commands.has_permissions(manage_guild=True)
     async def _resume(self, ctx: commands.Context):
         """Resumes a currently paused song."""
@@ -130,7 +131,7 @@ class MusicCog(commands.Cog):
             ctx.voice_state.voice.resume()
             await ctx.message.add_reaction("⏯")
 
-    @commands.command(name="stop")  # not currently working
+    @commands.command(name="stop")
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Stops playing song and clears the queue."""
@@ -141,7 +142,7 @@ class MusicCog(commands.Cog):
             ctx.voice_state.voice.stop()
             await ctx.message.add_reaction("⏹")
 
-    @commands.command(name="clear")  # not currently working
+    @commands.command(name="clear")
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Clears the current queue."""
@@ -203,12 +204,13 @@ class MusicCog(commands.Cog):
         total_duration = 0
 
         for i, song in enumerate(songs[start_index:end_index], start=start_index):
-            queue_description.append(song.generate_song_queue_embed(i + 1))
-            total_duration += song.source.raw_duration
+            queue_description.append(song.video_info.generate_song_queue_embed(i + 1))
+            total_duration += song.video_info.duration
 
         # Prepare embed message
+        total_duration = parse_duration(total_duration)
         embed = discord.Embed(
-            title="🎶 Current Queue 🎶",
+            title=f"🎶 Current Queue: {total_duration} remaining 🎶",
             description="\n".join(queue_description),
             color=discord.Color.blurple(),
         )
@@ -264,15 +266,15 @@ class MusicCog(commands.Cog):
 
         async with ctx.typing():
             try:
-                video_info = await YtdlSource.get_from_source(search)
+                ytdl_source = await YtdlSource.get_from_source(search)
             except YTDLError as e:
                 await ctx.send(
                     f"An error occurred while processing this request: {str(e)}"
                 )
 
-            await ctx.voice_state.songs.put(video_info)
+            await ctx.voice_state.songs.put(ytdl_source)
             await ctx.message.add_reaction("🎵")
-            await ctx.send(f"🔊 Queued: {video_info.title}")
+            await ctx.send(f"🔊 Queued: {ytdl_source.video_info.title}")
 
     @_join.before_invoke
     @_play.before_invoke
