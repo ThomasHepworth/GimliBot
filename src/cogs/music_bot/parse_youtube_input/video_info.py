@@ -57,6 +57,10 @@ class VideoInfo(BaseModel):
     @field_validator("upload_date", mode="after")
     def parse_upload_date(cls, v):
         return parse_date(v)
+    
+    @field_validator("stream_url", mode="after")
+    def change_to_str(cls, value):
+        return str(value)
 
     @classmethod
     def parse_video_information(
