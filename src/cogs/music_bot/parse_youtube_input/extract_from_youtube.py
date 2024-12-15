@@ -77,28 +77,40 @@ class YtdlSource(discord.PCMVolumeTransformer):
 
     def __init__(
         self,
-        original: discord.FFmpegPCMAudio,
+        ctx: discord.commands.Context,
+        source: discord.FFmpegPCMAudio,
         *,
         video_info: VideoInfo,
         volume: float = 0.5,
     ):
-        super().__init__(original, volume)
+        super().__init__(source, volume)
+        self.source = source
+        
+        self.requester = ctx.author
+        self.channel = ctx.channel
+
         self.video_info = video_info
 
     @classmethod
-    async def get_from_source(cls, search: str, *, volume: float = 0.5):
+    async def get_from_source(
+        cls, 
+        ctx: discord.commands.Context, 
+        search: str, 
+        *, 
+        volume: float = 0.5
+    ):
         """
         Extract video information and create a Discord-compatible audio source.
         """
         video_info: VideoInfo = await extract_video(cls.YTDL, search)
         logger.info(
-            f"Found video\n\t- {video_info.title}"
+            f"Found video\n\t- Title: {video_info.title}"
             f"\n\t- Stream URL: {video_info.stream_url}"
-            f"\n\t-  Webpage URL: {video_info.webpage_url}"
+            f"\n\t- Webpage URL: {video_info.webpage_url}"
         )
 
-        # Use the direct streamable URL for FFmpeg
-        ffmpeg_options = cls.FFMPEG_CONFIG
-        source = discord.FFmpegPCMAudio(video_info.stream_url, **ffmpeg_options)
+        source = discord.FFmpegPCMAudio(video_info.stream_url, **cls.FFMPEG_CONFIG)
+        return cls(ctx, source, video_info=video_info, volume=volume)
 
-        return cls(source, video_info=video_info, volume=volume)
+    def __repr__(self):
+        return self.video_info.title

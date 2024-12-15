@@ -46,10 +46,6 @@ class VideoInfo(BaseModel):
             raise ValueError("Upload date must be in YYYYMMDD format.")
         return value
 
-    @field_validator("duration", mode="after")
-    def parse_duration(cls, v):
-        return parse_duration(v)
-
     @field_validator("view_count", mode="after")
     def parse_view_count(cls, v):
         return readable_view_count(v)
@@ -135,7 +131,9 @@ class VideoInfo(BaseModel):
             color=discord.Color.blurple(),
         )
 
-        embed.add_field(name="Duration", value=self.duration, inline=True)
+        embed.add_field(
+            name="Duration", value=parse_duration(self.duration), inline=True
+        )
         embed.add_field(name="Views", value=self.view_count, inline=True)
         embed.add_field(name="Upload Date", value=self.upload_date, inline=True)
         embed.add_field(name="Requested by", value=requester.mention, inline=True)
@@ -156,5 +154,6 @@ class VideoInfo(BaseModel):
             str: A formatted string with song information.
         """
         return (
-            f"`{order}.` [**{self.title}**]({self.webpage_url})" f"-- `{self.duration}`"
+            f"`{order}.` [**{self.title}**]({self.webpage_url})\n\t"
+            f"⏱️ `{parse_duration(self.duration)}`"
         )

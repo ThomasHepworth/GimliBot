@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 from asyncio.exceptions import TimeoutError
 
 from async_timeout import timeout
@@ -9,10 +10,12 @@ from discord.ext import commands
 
 from src.cogs.music_bot.song_queue import SongQueue
 
-logging.basicConfig(level=logging.INFO)
+if TYPE_CHECKING:
+    from src.cogs.music_bot.parse_youtube_input.extract_from_youtube import YtdlSource
+
+logger = logging.getLogger(__name__)
 
 
-# TODO(ThomasHepworth): Does this logic work?
 class VoiceState:
     TIMEOUT = 300  # 5-minute timeout for waiting on the next song
 
@@ -20,10 +23,10 @@ class VoiceState:
         self.bot = bot
         self._ctx = ctx
 
-        self.current = None
+        self.current_ytdl_source: YtdlSource = None
         self.voice = None
-        self.next = asyncio.Event()
-        self.songs = SongQueue()
+        self.next_ytdl_source: YtdlSource = asyncio.Event()
+        self.songs: SongQueue[YtdlSource] = SongQueue()
 
         self._loop = False
         self._volume = 0.5
@@ -51,39 +54,55 @@ class VoiceState:
 
     @property
     def is_playing(self):
-        return self.voice and self.voice.is_connected() and self.current
+        logger.info(            
+            f"Voice: {self.voice}"
+            f"Connected: {self.voice.is_connected()}"
+            f"Current: {self.current_ytdl_source}"
+        )
+        return self.voice and self.voice.is_connected() and self.current_ytdl_source
 
     async def audio_player_task(self):
         while True:
-            self.next.clear()
+            self.next_ytdl_source.clear()
+            try:
+                if not self.loop:
+                    try:
+                        async with timeout(self.TIMEOUT):
+                            self.current_ytdl_source = await self.songs.get()
+                    except TimeoutError:
+                        time_elapsed = self.TIMEOUT / 60
+                        logger.info(
+                            f"No songs in queue for {time_elapsed} minutes. Disconnecting..."
+                        )
+                        asyncio.create_task(self.stop())
+                        return
+                    
+                current_song = self.current_ytdl_source
+                    
+                logger.info(f"Attempting to play to playent: {current_song} of type: {type(current_song)}")
+                current_song.source.volume = self._volume
+                self.voice.play(self.current_ytdl_source.source, after=self.play_next_song)
+                await current_song.channel.send(
+                    embed=current_song.video_info.create_song_embed(current_song.requester)
+                )
 
-            if not self.loop:
-                try:
-                    async with timeout(self.TIMEOUT):
-                        self.current = await self.songs.get()
-                except TimeoutError:
-                    time_elapsed = self.TIMEOUT / 60
-                    logging.info(
-                        f"No songs in queue for {time_elapsed} minutes. Disconnecting..."
-                    )
-                    asyncio.create_task(self.stop())
-                    return
+                await self.next_ytdl_source.wait()
 
-            self.current.source.volume = self._volume
-            self.voice.play(self.current.source, after=self.play_next_song)
-            await self.current.source.channel.send(embed=self.current.create_embed())
-
-            await self.next.wait()
+            except Exception:
+                logger.error("Error in audio_player_task:", exc_info=True)
+                await self._ctx.send(f"Failed to play song: {current_song}!")
+                break
 
     def play_next_song(self, error=None):
+        logging.info(f"Playing the next song in the queue: {self.songs}")
         if error:
-            logging.error(f"Error playing song: {error}")
-        self.next.set()
+            logger.error(f"Error playing song: {error}")
+        self.next_ytdl_source.set()
 
     def skip(self):
         self.skip_votes.clear()
         if self.is_playing:
-            logging.info("Skipping the current song.")
+            logger.info("Skipping the current song.")
             self.voice.stop()
 
     async def stop(self):

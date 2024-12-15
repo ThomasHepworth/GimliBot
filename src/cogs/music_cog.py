@@ -111,7 +111,7 @@ class MusicCog(commands.Cog):
     async def _now(self, ctx: commands.Context):
         """Displays the currently playing song."""
 
-        await ctx.send(embed=ctx.voice_state.current.create_embed())
+        await ctx.send(embed=ctx.voice_state.current_ytdl_source.create_embed())
 
     @commands.command(name="pause")
     @commands.has_permissions(manage_guild=True)
@@ -160,7 +160,7 @@ class MusicCog(commands.Cog):
             return await ctx.send("Not playing any music right now...")
 
         voter = ctx.message.author
-        if voter == ctx.voice_state.current.requester:
+        if voter == ctx.voice_state.current_ytdl_source.requester:
             await ctx.message.add_reaction("⏭")
             ctx.voice_state.skip()
 
@@ -203,12 +203,14 @@ class MusicCog(commands.Cog):
         queue_description = []
         total_duration = 0
 
-        for i, song in enumerate(songs[start_index:end_index], start=start_index):
-            queue_description.append(song.video_info.generate_song_queue_embed(i + 1))
+        for n, song in enumerate(songs[start_index:end_index], start=start_index):
+            queue_description.append(song.video_info.generate_song_queue_embed(n + 1))
             total_duration += song.video_info.duration
 
+        logger.info("Queue successfully constructed.")
         # Prepare embed message
         total_duration = parse_duration(total_duration)
+        logger.info(f"Total duration of all items in queue: {total_duration}")
         embed = discord.Embed(
             title=f"🎶 Current Queue: {total_duration} remaining 🎶",
             description="\n".join(queue_description),
@@ -264,17 +266,21 @@ class MusicCog(commands.Cog):
         if not ctx.voice_state.voice:
             await ctx.invoke(self._join)
 
+        already_playing = ctx.voice_state.is_playing
+
         async with ctx.typing():
             try:
-                ytdl_source = await YtdlSource.get_from_source(search)
+                ytdl_source = await YtdlSource.get_from_source(ctx, search)
             except YTDLError as e:
                 await ctx.send(
                     f"An error occurred while processing this request: {str(e)}"
                 )
 
             await ctx.voice_state.songs.put(ytdl_source)
+            logger.info(f"Current queue: {ctx.voice_state.songs.as_list()}")
             await ctx.message.add_reaction("🎵")
-            await ctx.send(f"🔊 Queued: {ytdl_source.video_info.title}")
+            if already_playing:
+                await ctx.send(f"🔊 Queued: {ytdl_source.video_info.title}")
 
     @_join.before_invoke
     @_play.before_invoke
