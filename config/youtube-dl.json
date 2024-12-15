@@ -1,1 +1,7 @@
-{"format": "bestaudio", "noplaylist": "True"}
+{
+    "format": "bestaudio/best",
+    "extractaudio": true,
+    "audioformat": "opus",
+    "noplaylist": true,
+    "quiet": true
+}
