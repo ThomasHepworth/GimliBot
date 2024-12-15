@@ -6,5 +6,5 @@ services:
     build: .
     environment:
       - TOKEN=${TOKEN}
-      - LOG_LEVEL=DEBUG
+      - LOG_LEVEL=INFO
     restart: unless-stopped
