@@ -1,49 +1,55 @@
-import asyncio
-import logging
 import os
+import logging
+from typing import List
 
+import discord
 from discord.ext import commands
 
-from src.bot_intents import generate_music_bot_intents
-from src.cogs import HelperCommands, MusicCog
+from src.cogs.music_cog import MusicCog
+from src.cogs.test_cog import GifCog
+from src.initialisation import check_and_initialise_opus
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+async def load_cogs(bot, cogs: List[commands.Cog]):
+    for cog in cogs:
+        await bot.add_cog(cog(bot))
+        logger.info(f"{cog.__name__} loaded successfully.")
 
-# Function to load bot cogs
-async def load_cogs(bot):
-    logger.info("Loading cogs...")
-    await bot.add_cog(MusicCog(bot))
-    logger.info("Cogs loaded successfully.")
-
-
-# Main bot setup and run logic
 async def main():
-    logger.info("Initializing bot...")
-    bot = commands.Bot(
-        command_prefix="!",
-        help_command=HelperCommands(),
-        intents=generate_music_bot_intents(),
-    )
+    check_and_initialise_opus()
 
-    # Load cogs
-    await load_cogs(bot)
+    intents = discord.Intents.default()
+    intents.message_content = True
+    intents.guilds = True
+    intents.voice_states = True
 
-    # Retrieve bot token
+    bot = commands.Bot(command_prefix="!", intents=intents)
+
+    @bot.event
+    async def on_ready():
+        logger.info(f"Bot is online! Logged in as {bot.user.name}")
+
+    @bot.event
+    async def on_command_error(ctx, error):
+        """Logs command errors with full traceback."""
+        if isinstance(error, commands.CommandNotFound):
+            logger.warning(f"Command not found: {ctx.message.content}")
+        else:
+            logger.error("An error occurred during command execution:", exc_info=error)
+            await ctx.send("An unexpected error occurred. Check the logs for details.")
+
     token = os.getenv("TOKEN")
     if not token:
-        logger.error("No bot token found. Please set the TOKEN environment variable.")
+        logger.error("No bot token found. Set the TOKEN environment variable.")
         return
 
-    # Start the bot
-    try:
-        logger.info("Starting bot...")
-        await bot.start(token)
-    except Exception as e:
-        logger.error(f"Failed to start bot: {e}")
-
+    await load_cogs(bot, [GifCog, MusicCog])
+    await bot.start(token)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        import asyncio
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot shut down gracefully.")

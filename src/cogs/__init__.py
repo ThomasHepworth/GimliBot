@@ -1,4 +1,5 @@
 from .help import HelperCommands
-from .music_bot.music_cog import MusicCog
+from .music_cog import MusicCog
+from .test_cog import GifCog
 
-__all__ = ["MusicCog", "HelperCommands"]
+__all__ = ["MusicCog", "HelperCommands", "GifCog"]
